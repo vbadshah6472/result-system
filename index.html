@@ -3,30 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shree Tikuligadh Secondary School - Result Portal</title>
+    <title>Shree Tikuligadh Secondary School - Result System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#1d4ed8',
-                        secondary: '#1e40af',
-                        accent: '#3b82f6',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
         
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Poppins', sans-serif;
             background-color: #f8fafc;
         }
         
@@ -62,6 +50,36 @@
             to { transform: rotate(360deg); }
         }
         
+        .watermark {
+            position: absolute;
+            opacity: 0.1;
+            font-size: 120px;
+            color: #1d4ed8;
+            transform: rotate(-30deg);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Print styles */
         @media print {
             .no-print {
                 display: none !important;
@@ -74,191 +92,526 @@
             .result-container {
                 box-shadow: none !important;
                 border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
             }
-        }
-        
-        .action-btn {
-            transition: all 0.2s ease;
-        }
-        
-        .action-btn:hover {
-            transform: translateY(-1px);
+            
+            .result-container .p-6 {
+                padding: 1rem !important;
+            }
         }
     </style>
 </head>
 <body class="min-h-screen bg-gray-50">
-    <div class="container mx-auto px-4 py-8">
-        <!-- Header -->
-        <header class="text-center mb-8">
-            <div class="school-logo mx-auto mb-4">
-                <i class="fas fa-school"></i>
-            </div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">Shree Tikuligadh Secondary School</h1>
-            <p class="text-gray-600">Tilottama-14, Tikuligadh</p>
-            <h2 class="text-2xl font-semibold text-primary mt-6">Student Result Portal</h2>
-        </header>
-        
-        <!-- Search Form -->
-        <div id="searchFormContainer" class="max-w-md mx-auto bg-white rounded-lg shadow-md overflow-hidden result-card no-print">
-            <div class="bg-primary px-6 py-4">
-                <h3 class="text-lg font-semibold text-white">Check Your Result</h3>
-            </div>
-            <form id="resultForm" class="p-6">
-                <div class="mb-4">
-                    <label for="class" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
-                    <select id="class" name="class" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
-                        <option value="" disabled selected>Select your class</option>
-                        <option value="10">Grade 10</option>
-                        <option value="9">Grade 9</option>
-                        <option value="8">Grade 8</option>
-                        <option value="7">Grade 7</option>
-                        <option value="6">Grade 6</option>
-                        <option value="5">Grade 5</option>
-                    </select>
+    <!-- Main App Container -->
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- Public Student View (Default) -->
+        <div id="studentView">
+            <!-- Header -->
+            <header class="text-center mb-8">
+                <div class="school-logo mx-auto mb-4">
+                    <i class="fas fa-school"></i>
                 </div>
-                
-                <div id="sectionContainer" class="mb-4 hidden">
-                    <label for="section" class="block text-sm font-medium text-gray-700 mb-1">Section</label>
-                    <select id="section" name="section" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
-                        <option value="A">Section A</option>
-                        <option value="B">Section B</option>
-                    </select>
-                </div>
-                
-                <div class="mb-6">
-                    <label for="roll" class="block text-sm font-medium text-gray-700 mb-1">Roll Number</label>
-                    <input type="number" id="roll" name="roll" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary" placeholder="Enter your roll number">
-                </div>
-                
-                <button type="submit" class="w-full bg-primary hover:bg-secondary text-white font-medium py-2 px-4 rounded-md shadow-sm transition duration-150 ease-in-out flex items-center justify-center">
-                    <span id="submitText">View Result</span>
-                    <svg id="loadingSpinner" class="hidden ml-2 h-5 w-5 text-white loading-spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </button>
-            </form>
-        </div>
-        
-        <!-- Result Display -->
-        <div id="resultContainer" class="max-w-3xl mx-auto mt-8 hidden">
-            <div class="bg-white rounded-lg shadow-md overflow-hidden result-card result-container">
-                <div class="bg-primary px-6 py-4">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-white">Academic Result</h3>
-                        <div class="flex space-x-2">
-                            <button id="downloadBtn" class="text-white hover:text-gray-200 focus:outline-none action-btn" title="Download Result">
-                                <i class="fas fa-download"></i>
-                            </button>
-                            <button id="printBtn" class="text-white hover:text-gray-200 focus:outline-none action-btn" title="Print Result">
-                                <i class="fas fa-print"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-6">
-                    <div class="text-center mb-6">
-                        <h2 class="text-2xl font-bold text-gray-800" id="studentName">-</h2>
-                        <div class="flex justify-center space-x-6 mt-2 text-gray-600">
-                            <p>Class: <span id="resultClass" class="font-medium">-</span></p>
-                            <p>Section: <span id="resultSection" class="font-medium">-</span></p>
-                            <p>Roll No: <span id="resultRoll" class="font-medium">-</span></p>
-                        </div>
-                    </div>
-                    
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marks</th>
-                                </tr>
-                            </thead>
-                            <tbody id="resultTableBody" class="bg-white divide-y divide-gray-200">
-                                <!-- Results will be populated here -->
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="mt-8 pt-4 border-t border-gray-200 text-center text-sm text-gray-500">
-                        <p>This is an official result document of Shree Tikuligadh Secondary School</p>
-                        <p class="mt-1">© 2023 All Rights Reserved</p>
-                    </div>
-                </div>
-            </div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Shree Tikuligadh Secondary School</h1>
+                <p class="text-gray-600">Tilottama-14, Tikuligadh, Rupandehi</p>
+                <p class="text-gray-500 text-sm">Established: 2018 B.S.</p>
+                <h2 class="text-2xl font-semibold text-blue-600 mt-6">Student Result Portal</h2>
+            </header>
             
-            <div class="mt-6 text-center no-print">
-                <button id="newSearchBtn" class="bg-primary hover:bg-secondary text-white font-medium py-2 px-4 rounded-md shadow-sm action-btn">
-                    <i class="fas fa-search mr-1"></i> Search Again
-                </button>
-            </div>
-        </div>
-        
-        <!-- Error Message -->
-        <div id="errorContainer" class="max-w-md mx-auto mt-8 hidden">
-            <div class="bg-red-50 border-l-4 border-red-400 p-4">
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            <!-- Search Form -->
+            <div id="searchFormContainer" class="max-w-md mx-auto bg-white rounded-lg shadow-md overflow-hidden result-card no-print">
+                <div class="bg-blue-600 px-6 py-4">
+                    <h3 class="text-lg font-semibold text-white">Check Your Result</h3>
+                </div>
+                <form id="resultForm" class="p-6">
+                    <div class="mb-4">
+                        <label for="class" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                        <select id="class" name="class" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="" disabled selected>Select your class</option>
+                            <option value="10">Grade 10</option>
+                            <option value="9">Grade 9</option>
+                            <option value="8">Grade 8</option>
+                            <option value="7">Grade 7</option>
+                            <option value="6">Grade 6</option>
+                            <option value="5">Grade 5</option>
+                        </select>
+                    </div>
+                    
+                    <div id="sectionContainer" class="mb-4 hidden">
+                        <label for="section" class="block text-sm font-medium text-gray-700 mb-1">Section</label>
+                        <select id="section" name="section" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="A">Section A</option>
+                            <option value="B">Section B</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="roll" class="block text-sm font-medium text-gray-700 mb-1">Roll Number</label>
+                        <input type="number" id="roll" name="roll" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter your roll number">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="dob" class="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                        <input type="date" id="dob" name="dob" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition duration-150 ease-in-out flex items-center justify-center">
+                        <span id="submitText">View Result</span>
+                        <svg id="loadingSpinner" class="hidden ml-2 h-5 w-5 text-white loading-spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Result Display -->
+            <div id="resultContainer" class="max-w-3xl mx-auto mt-8 hidden">
+                <div class="bg-white rounded-lg shadow-md overflow-hidden result-card result-container relative">
+                    <div class="watermark">OFFICIAL</div>
+                    <div class="bg-blue-600 px-6 py-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-white">Academic Result</h3>
+                            <div class="flex space-x-2">
+                                <button id="downloadBtn" class="text-white hover:text-gray-200 focus:outline-none" title="Download Result">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                <button id="printBtn" class="text-white hover:text-gray-200 focus:outline-none" title="Print Result">
+                                    <i class="fas fa-print"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="ml-3">
-                        <h3 class="text-sm font-medium text-red-800" id="errorTitle">Error</h3>
-                        <div class="mt-2 text-sm text-red-700" id="errorMessage">
-                            <p>No result found for the provided details. Please check your information and try again.</p>
+                    <div class="p-6">
+                        <div class="text-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800" id="studentName">-</h2>
+                            <div class="flex justify-center space-x-6 mt-2 text-gray-600">
+                                <p>Class: <span id="resultClass" class="font-medium">-</span></p>
+                                <p>Section: <span id="resultSection" class="font-medium">-</span></p>
+                                <p>Roll No: <span id="resultRoll" class="font-medium">-</span></p>
+                                <p>DOB: <span id="resultDob" class="font-medium">-</span></p>
+                            </div>
+                            <p class="mt-2 text-gray-500" id="examType">-</p>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Marks</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Marks</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Obtained Marks</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Results will be populated here -->
+                                </tbody>
+                                <tfoot class="bg-gray-50">
+                                    <tr>
+                                        <td class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</td>
+                                        <td class="px-6 py-3 text-left text-xs font-medium text-gray-500" id="totalFullMarks">-</td>
+                                        <td class="px-6 py-3 text-left text-xs font-medium text-gray-500" id="totalPassMarks">-</td>
+                                        <td class="px-6 py-3 text-left text-xs font-medium text-gray-500" id="totalObtainedMarks">-</td>
+                                        <td class="px-6 py-3 text-left text-xs font-medium text-gray-500" id="finalRemarks">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</td>
+                                        <td class="px-6 py-3 text-left text-xs font-bold text-blue-600" id="percentage">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Division</td>
+                                        <td class="px-6 py-3 text-left text-xs font-bold text-blue-600" id="division">-</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-8 pt-4 border-t border-gray-200">
+                            <div class="flex justify-between items-center">
+                                <div class="text-left">
+                                    <p class="text-sm text-gray-500">Checked by:</p>
+                                    <p class="font-medium mt-2">____________________</p>
+                                    <p class="text-xs text-gray-500">Teacher's Signature</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-500">Date: <span id="resultDate">-</span></p>
+                                    <p class="font-medium mt-2">____________________</p>
+                                    <p class="text-xs text-gray-500">Principal's Signature</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8 pt-4 border-t border-gray-200 text-center text-sm text-gray-500">
+                            <p>This is an official result document of Shree Tikuligadh Secondary School</p>
+                            <p class="mt-1">© 2023 All Rights Reserved</p>
                         </div>
                     </div>
                 </div>
+                
+                <div class="mt-6 text-center no-print">
+                    <button id="newSearchBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm">
+                        <i class="fas fa-search mr-1"></i> Search Again
+                    </button>
+                </div>
             </div>
             
-            <div class="mt-6 text-center">
-                <button id="tryAgainBtn" class="bg-primary hover:bg-secondary text-white font-medium py-2 px-4 rounded-md shadow-sm action-btn">
-                    <i class="fas fa-redo mr-1"></i> Try Again
+            <!-- Error Message -->
+            <div id="errorContainer" class="max-w-md mx-auto mt-8 hidden">
+                <div class="bg-red-50 border-l-4 border-red-400 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800" id="errorTitle">Error</h3>
+                            <div class="mt-2 text-sm text-red-700" id="errorMessage">
+                                <p>No result found for the provided details. Please check your information and try again.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-center">
+                    <button id="tryAgainBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm">
+                        <i class="fas fa-redo mr-1"></i> Try Again
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Not Published Message -->
+            <div id="notPublishedContainer" class="max-w-md mx-auto mt-8 hidden">
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-yellow-800">Result Not Published</h3>
+                            <div class="mt-2 text-sm text-yellow-700">
+                                <p>The result for this class/exam is not published yet. Please check back later.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-center">
+                    <button id="backToSearchBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm">
+                        <i class="fas fa-search mr-1"></i> Back to Search
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Admin Login Link -->
+            <div class="mt-8 text-center no-print">
+                <button id="adminLoginBtn" class="text-blue-600 hover:text-blue-800 font-medium">
+                    <i class="fas fa-lock mr-1"></i> Admin/Teacher Login
                 </button>
+            </div>
+        </div>
+        
+        <!-- Admin/Teacher View (Hidden by default) -->
+        <div id="adminView" class="hidden">
+            <!-- Admin Header -->
+            <header class="text-center mb-8">
+                <div class="school-logo mx-auto mb-4">
+                    <i class="fas fa-school"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Shree Tikuligadh Secondary School</h1>
+                <p class="text-gray-600">Tilottama-14, Tikuligadh, Rupandehi</p>
+                <h2 class="text-2xl font-semibold text-blue-600 mt-6">Result Management System</h2>
+                <p class="text-gray-500">Admin/Teacher Panel</p>
+            </header>
+            
+            <!-- Login Form -->
+            <div id="loginFormContainer" class="max-w-md mx-auto bg-white rounded-lg shadow-md overflow-hidden result-card">
+                <div class="bg-blue-600 px-6 py-4">
+                    <h3 class="text-lg font-semibold text-white">Admin Login</h3>
+                </div>
+                <form id="loginForm" class="p-6">
+                    <div class="mb-4">
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" id="email" name="email" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter your email">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="password" name="password" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter your password">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition duration-150 ease-in-out flex items-center justify-center">
+                        <span id="loginSubmitText">Login</span>
+                        <svg id="loginLoadingSpinner" class="hidden ml-2 h-5 w-5 text-white loading-spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Admin Dashboard (Hidden until login) -->
+            <div id="adminDashboard" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Welcome, <span id="adminName">Admin</span></h2>
+                    <button id="logoutBtn" class="text-red-600 hover:text-red-800 font-medium">
+                        <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                    </button>
+                </div>
+                
+                <!-- Exam Selection -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Select Exam</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="adminClass" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                            <select id="adminClass" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="" disabled selected>Select Class</option>
+                                <option value="10">Grade 10</option>
+                                <option value="9">Grade 9</option>
+                                <option value="8">Grade 8</option>
+                                <option value="7">Grade 7</option>
+                                <option value="6">Grade 6</option>
+                                <option value="5">Grade 5</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="adminSection" class="block text-sm font-medium text-gray-700 mb-1">Section</label>
+                            <select id="adminSection" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="" disabled selected>Select Section</option>
+                                <option value="A">Section A</option>
+                                <option value="B">Section B</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="adminExamType" class="block text-sm font-medium text-gray-700 mb-1">Exam Type</label>
+                            <select id="adminExamType" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="" disabled selected>Select Exam</option>
+                                <option value="first_term">First Term</option>
+                                <option value="mid_term">Mid Term</option>
+                                <option value="final">Final Exam</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-between">
+                        <button id="loadStudentsBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm">
+                            <i class="fas fa-users mr-1"></i> Load Students
+                        </button>
+                        <div class="flex items-center">
+                            <span class="text-sm font-medium text-gray-700 mr-2">Publish Result:</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="publishToggle" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Student List and Marks Entry -->
+                <div id="studentListContainer" class="hidden">
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Student List</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DOB</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminStudentTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Students will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Marks Entry Form -->
+                    <div id="marksEntryForm" class="hidden">
+                        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-gray-800">Enter Marks for <span id="marksStudentName">-</span></h3>
+                                <button id="closeMarksFormBtn" class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <p class="text-sm text-gray-600">Roll No: <span id="marksRollNo" class="font-medium">-</span></p>
+                            </div>
+                            
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Marks</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Marks</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Obtained Marks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="marksEntryTableBody" class="bg-white divide-y divide-gray-200">
+                                        <!-- Subjects will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="mt-6">
+                                <button id="saveMarksBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm">
+                                    <i class="fas fa-save mr-1"></i> Save Marks
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- View Results Section -->
+                <div id="viewResultsSection" class="hidden">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">View Results</h3>
+                        
+                        <div class="mb-4">
+                            <label for="resultRollSearch" class="block text-sm font-medium text-gray-700 mb-1">Search by Roll No</label>
+                            <div class="flex">
+                                <input type="number" id="resultRollSearch" class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter roll number">
+                                <button id="searchResultBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-r-md shadow-sm">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="resultDisplayAdmin" class="mt-6 hidden">
+                            <!-- Result will be displayed here -->
+                        </div>
+                        
+                        <div id="classResultStats" class="mt-6 hidden">
+                            <h4 class="text-md font-semibold text-gray-800 mb-2">Class Statistics</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    <p class="text-sm text-blue-800">Total Students</p>
+                                    <p class="text-2xl font-bold text-blue-600" id="totalStudentsCount">0</p>
+                                </div>
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <p class="text-sm text-green-800">Passed Students</p>
+                                    <p class="text-2xl font-bold text-green-600" id="passedStudentsCount">0</p>
+                                </div>
+                                <div class="bg-yellow-50 p-4 rounded-lg">
+                                    <p class="text-sm text-yellow-800">Average Percentage</p>
+                                    <p class="text-2xl font-bold text-yellow-600" id="averagePercentage">0%</p>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <button id="downloadClassResultsBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm">
+                                    <i class="fas fa-download mr-1"></i> Download Class Results
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Back to Student View -->
+                <div class="mt-6 text-center">
+                    <button id="backToStudentViewBtn" class="text-blue-600 hover:text-blue-800 font-medium">
+                        <i class="fas fa-graduation-cap mr-1"></i> Back to Student View
+                    </button>
+                </div>
             </div>
         </div>
     </div>
     
-    <!-- Firebase Config (for future use) -->
+    <!-- Firebase Configuration and Main JavaScript -->
     <script>
-        // Firebase configuration (for future admin login integration)
+        // Firebase configuration
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyD1WUbckRKgjxvxY6tTnXPMDNmnXuLAkuA",
+            authDomain: "online-results-system--tss.firebaseapp.com",
+            projectId: "online-results-system--tss",
+            storageBucket: "online-results-system--tss.appspot.com",
+            messagingSenderId: "910049232791",
+            appId: "1:910049232791:web:11eed578cd9593a5f566d2"
         };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
         
-        // Initialize Firebase (commented out for now)
-        // firebase.initializeApp(firebaseConfig);
-    </script>
-    
-    <!-- Main JavaScript -->
-    <script>
+        // Main Application
         document.addEventListener('DOMContentLoaded', function() {
-            // DOM Elements
+            // DOM Elements - Student View
+            const app = document.getElementById('app');
+            const studentView = document.getElementById('studentView');
+            const adminView = document.getElementById('adminView');
             const searchFormContainer = document.getElementById('searchFormContainer');
             const resultForm = document.getElementById('resultForm');
             const classSelect = document.getElementById('class');
             const sectionContainer = document.getElementById('sectionContainer');
             const sectionSelect = document.getElementById('section');
             const rollInput = document.getElementById('roll');
+            const dobInput = document.getElementById('dob');
             const submitText = document.getElementById('submitText');
             const loadingSpinner = document.getElementById('loadingSpinner');
             const resultContainer = document.getElementById('resultContainer');
             const errorContainer = document.getElementById('errorContainer');
+            const notPublishedContainer = document.getElementById('notPublishedContainer');
             const newSearchBtn = document.getElementById('newSearchBtn');
             const tryAgainBtn = document.getElementById('tryAgainBtn');
+            const backToSearchBtn = document.getElementById('backToSearchBtn');
+            const adminLoginBtn = document.getElementById('adminLoginBtn');
             const printBtn = document.getElementById('printBtn');
             const downloadBtn = document.getElementById('downloadBtn');
             
-            // Google Apps Script Web App URL (replace with your actual URL)
-            const scriptUrl = 'https://script.google.com/macros/s/AKfycbx4aWf9M-0EXDOtdL2t-LWdpyKZpoSudBWXIaXxUnJ8o29VWTPoHif9bpHwRVxYd1uT/exec';
+            // DOM Elements - Admin View
+            const loginFormContainer = document.getElementById('loginFormContainer');
+            const loginForm = document.getElementById('loginForm');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const loginSubmitText = document.getElementById('loginSubmitText');
+            const loginLoadingSpinner = document.getElementById('loginLoadingSpinner');
+            const adminDashboard = document.getElementById('adminDashboard');
+            const adminName = document.getElementById('adminName');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const adminClassSelect = document.getElementById('adminClass');
+            const adminSectionSelect = document.getElementById('adminSection');
+            const adminExamTypeSelect = document.getElementById('adminExamType');
+            const loadStudentsBtn = document.getElementById('loadStudentsBtn');
+            const publishToggle = document.getElementById('publishToggle');
+            const studentListContainer = document.getElementById('studentListContainer');
+            const adminStudentTableBody = document.getElementById('adminStudentTableBody');
+            const marksEntryForm = document.getElementById('marksEntryForm');
+            const marksStudentName = document.getElementById('marksStudentName');
+            const marksRollNo = document.getElementById('marksRollNo');
+            const marksEntryTableBody = document.getElementById('marksEntryTableBody');
+            const saveMarksBtn = document.getElementById('saveMarksBtn');
+            const closeMarksFormBtn = document.getElementById('closeMarksFormBtn');
+            const viewResultsSection = document.getElementById('viewResultsSection');
+            const resultRollSearch = document.getElementById('resultRollSearch');
+            const searchResultBtn = document.getElementById('searchResultBtn');
+            const resultDisplayAdmin = document.getElementById('resultDisplayAdmin');
+            const classResultStats = document.getElementById('classResultStats');
+            const totalStudentsCount = document.getElementById('totalStudentsCount');
+            const passedStudentsCount = document.getElementById('passedStudentsCount');
+            const averagePercentage = document.getElementById('averagePercentage');
+            const downloadClassResultsBtn = document.getElementById('downloadClassResultsBtn');
+            const backToStudentViewBtn = document.getElementById('backToStudentViewBtn');
             
-            // Show/hide section dropdown based on class selection
+            // Current state variables
+            let currentStudentData = null;
+            let currentAdminClass = null;
+            let currentAdminSection = null;
+            let currentAdminExamType = null;
+            let currentStudentId = null;
+            let currentStudentSubjects = [];
+            
+            // Show/hide section dropdown based on class selection (Student View)
             classSelect.addEventListener('change', function() {
                 const selectedClass = this.value;
                 if (['8', '9', '10'].includes(selectedClass)) {
@@ -270,7 +623,7 @@
                 }
             });
             
-            // Form submission
+            // Form submission (Student View)
             resultForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -281,74 +634,172 @@
                 // Prepare data
                 const formData = {
                     class: classSelect.value,
-                    section: sectionSelect.value,
-                    roll: rollInput.value
+                    section: sectionSelect.value || 'A', // Default to 'A' if not selected
+                    roll: rollInput.value,
+                    dob: dobInput.value
                 };
                 
                 // Hide search form and any previous results or errors
                 searchFormContainer.classList.add('hidden');
                 resultContainer.classList.add('hidden');
                 errorContainer.classList.add('hidden');
+                notPublishedContainer.classList.add('hidden');
                 
-                // Send request to Google Apps Script
-                fetch(scriptUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.error) {
-                        showError(data.error);
-                    } else if (data.student) {
-                        displayResult(data.student);
-                    } else {
-                        showError('No result found for the provided details.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showError('Failed to fetch result. Please try again later.');
-                })
-                .finally(() => {
-                    // Reset loading state
-                    submitText.textContent = 'View Result';
-                    loadingSpinner.classList.add('hidden');
-                });
+                // Check if result is published first
+                checkResultPublished(formData.class, formData.section)
+                    .then(isPublished => {
+                        if (!isPublished) {
+                            throw new Error('Result not published yet');
+                        }
+                        
+                        // Fetch student data
+                        return getStudentResult(formData.class, formData.section, formData.roll, formData.dob);
+                    })
+                    .then(studentData => {
+                        // Reset loading state
+                        submitText.textContent = 'View Result';
+                        loadingSpinner.classList.add('hidden');
+                        
+                        if (studentData) {
+                            currentStudentData = studentData;
+                            displayResult(studentData);
+                        } else {
+                            throw new Error('No result found for the provided details');
+                        }
+                    })
+                    .catch(error => {
+                        // Reset loading state
+                        submitText.textContent = 'View Result';
+                        loadingSpinner.classList.add('hidden');
+                        
+                        if (error.message === 'Result not published yet') {
+                            notPublishedContainer.classList.remove('hidden');
+                        } else {
+                            showError(error.message || 'No result found for the provided details. Please check your information and try again.');
+                        }
+                    });
             });
             
-            // Display result function
+            // Check if result is published for a class/section
+            function checkResultPublished(classId, section) {
+                return db.collection('published_results')
+                    .where('class', '==', classId)
+                    .where('section', '==', section)
+                    .get()
+                    .then(snapshot => {
+                        return !snapshot.empty;
+                    });
+            }
+            
+            // Get student result from Firestore
+            function getStudentResult(classId, section, roll, dob) {
+                return db.collection('students')
+                    .where('class', '==', classId)
+                    .where('section', '==', section)
+                    .where('roll', '==', parseInt(roll))
+                    .where('dob', '==', dob)
+                    .limit(1)
+                    .get()
+                    .then(snapshot => {
+                        if (snapshot.empty) {
+                            return null;
+                        }
+                        
+                        const studentDoc = snapshot.docs[0];
+                        const studentData = studentDoc.data();
+                        studentData.id = studentDoc.id;
+                        
+                        // Get the exam results
+                        return db.collection('results')
+                            .where('studentId', '==', studentDoc.id)
+                            .get()
+                            .then(resultsSnapshot => {
+                                if (resultsSnapshot.empty) {
+                                    return null;
+                                }
+                                
+                                // Get the latest result (assuming one exam type for now)
+                                const resultDoc = resultsSnapshot.docs[0];
+                                studentData.result = resultDoc.data();
+                                studentData.result.examType = resultDoc.id.split('_')[0]; // Extract exam type from doc ID
+                                
+                                return studentData;
+                            });
+                    });
+            }
+            
+            // Display result function (Student View)
             function displayResult(student) {
                 // Populate student info
                 document.getElementById('studentName').textContent = student.name || '-';
                 document.getElementById('resultClass').textContent = `Grade ${student.class}`;
                 document.getElementById('resultSection').textContent = student.section || '-';
                 document.getElementById('resultRoll').textContent = student.roll;
+                document.getElementById('resultDob').textContent = student.dob || '-';
+                
+                // Format exam type for display
+                let examTypeDisplay = '';
+                if (student.result.examType === 'first_term') {
+                    examTypeDisplay = 'First Term Examination';
+                } else if (student.result.examType === 'mid_term') {
+                    examTypeDisplay = 'Mid Term Examination';
+                } else if (student.result.examType === 'final') {
+                    examTypeDisplay = 'Final Examination';
+                }
+                document.getElementById('examType').textContent = examTypeDisplay;
                 
                 // Populate subjects and marks
                 const tableBody = document.getElementById('resultTableBody');
                 tableBody.innerHTML = '';
                 
-                if (student.subjects && student.subjects.length > 0) {
-                    student.subjects.forEach(subject => {
+                if (student.result.subjects && student.result.subjects.length > 0) {
+                    student.result.subjects.forEach(subject => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${subject.name}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${subject.marks}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${subject.fullMarks}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${subject.passMarks}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${subject.obtainedMarks < subject.passMarks ? 'text-red-600' : 'text-green-600'}">${subject.obtainedMarks}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${subject.obtainedMarks < subject.passMarks ? 'text-red-600' : 'text-green-600'}">${subject.obtainedMarks < subject.passMarks ? 'Fail' : 'Pass'}</td>
                         `;
                         tableBody.appendChild(row);
                     });
+                    
+                    // Calculate totals
+                    const totalFullMarks = student.result.subjects.reduce((sum, subject) => sum + subject.fullMarks, 0);
+                    const totalPassMarks = student.result.subjects.reduce((sum, subject) => sum + subject.passMarks, 0);
+                    const totalObtainedMarks = student.result.subjects.reduce((sum, subject) => sum + subject.obtainedMarks, 0);
+                    const percentage = ((totalObtainedMarks / totalFullMarks) * 100).toFixed(2);
+                    const hasFailed = student.result.subjects.some(subject => subject.obtainedMarks < subject.passMarks);
+                    
+                    // Set totals
+                    document.getElementById('totalFullMarks').textContent = totalFullMarks;
+                    document.getElementById('totalPassMarks').textContent = totalPassMarks;
+                    document.getElementById('totalObtainedMarks').textContent = totalObtainedMarks;
+                    document.getElementById('finalRemarks').textContent = hasFailed ? 'Fail' : 'Pass';
+                    document.getElementById('percentage').textContent = `${percentage}%`;
+                    
+                    // Determine division
+                    let division = '';
+                    if (hasFailed) {
+                        division = 'Fail';
+                    } else if (percentage >= 80) {
+                        division = 'Distinction';
+                    } else if (percentage >= 60) {
+                        division = 'First Division';
+                    } else if (percentage >= 45) {
+                        division = 'Second Division';
+                    } else {
+                        division = 'Third Division';
+                    }
+                    document.getElementById('division').textContent = division;
+                    
+                    // Set current date
+                    document.getElementById('resultDate').textContent = new Date().toLocaleDateString();
                 } else {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td colspan="2" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">No subject data available</td>
+                        <td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">No subject data available</td>
                     `;
                     tableBody.appendChild(row);
                 }
@@ -357,13 +808,13 @@
                 resultContainer.classList.remove('hidden');
             }
             
-            // Show error function
+            // Show error function (Student View)
             function showError(message) {
                 document.getElementById('errorMessage').innerHTML = `<p>${message}</p>`;
                 errorContainer.classList.remove('hidden');
             }
             
-            // New search button
+            // New search button (Student View)
             newSearchBtn.addEventListener('click', function() {
                 resultContainer.classList.add('hidden');
                 searchFormContainer.classList.remove('hidden');
@@ -371,35 +822,171 @@
                 sectionContainer.classList.add('hidden');
             });
             
-            // Try again button
+            // Try again button (Student View)
             tryAgainBtn.addEventListener('click', function() {
                 errorContainer.classList.add('hidden');
                 searchFormContainer.classList.remove('hidden');
             });
             
-            // Print button
+            // Back to search button (Student View)
+            backToSearchBtn.addEventListener('click', function() {
+                notPublishedContainer.classList.add('hidden');
+                searchFormContainer.classList.remove('hidden');
+            });
+            
+            // Print button (Student View)
             printBtn.addEventListener('click', function() {
                 window.print();
             });
             
-            // Download button
+            // Download button (Student View)
             downloadBtn.addEventListener('click', function() {
                 // Create a canvas to generate an image of the result
                 const resultCard = document.querySelector('.result-container');
                 
-                html2canvas(resultCard).then(canvas => {
-                    // Create download link
-                    const link = document.createElement('a');
-                    link.download = `result_${document.getElementById('resultRoll').textContent}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
+                // Load html2canvas dynamically
+                const script = document.createElement('script');
+                script.src = 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
+                script.onload = function() {
+                    html2canvas(resultCard).then(canvas => {
+                        // Create download link
+                        const link = document.createElement('a');
+                        link.download = `result_${document.getElementById('resultRoll').textContent}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    });
+                };
+                document.head.appendChild(script);
+            });
+            
+            // Admin login button (Student View) - FIXED
+            adminLoginBtn.addEventListener('click', function() {
+                studentView.classList.add('hidden');
+                adminView.classList.remove('hidden');
+                loginFormContainer.classList.remove('hidden');
+                adminDashboard.classList.add('hidden');
+            });
+            
+            // Back to student view button (Admin View)
+            backToStudentViewBtn.addEventListener('click', function() {
+                adminView.classList.add('hidden');
+                studentView.classList.remove('hidden');
+            });
+            
+            // Login form submission (Admin View)
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const email = emailInput.value;
+                const password = passwordInput.value;
+                
+                // Show loading state
+                loginSubmitText.textContent = 'Logging in...';
+                loginLoadingSpinner.classList.remove('hidden');
+                
+                // Sign in with email and password
+                auth.signInWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        // Get user data
+                        const user = userCredential.user;
+                        
+                        // Hide login form, show dashboard
+                        loginFormContainer.classList.add('hidden');
+                        adminDashboard.classList.remove('hidden');
+                        
+                        // Set admin name
+                        adminName.textContent = user.email.split('@')[0];
+                        
+                        // Reset form
+                        loginForm.reset();
+                    })
+                    .catch((error) => {
+                        // Handle errors
+                        let errorMessage = 'Login failed. Please try again.';
+                        
+                        if (error.code === 'auth/wrong-password') {
+                            errorMessage = 'Incorrect password.';
+                        } else if (error.code === 'auth/user-not-found') {
+                            errorMessage = 'No user found with this email.';
+                        } else if (error.code === 'auth/invalid-email') {
+                            errorMessage = 'Invalid email address.';
+                        }
+                        
+                        alert(errorMessage);
+                    })
+                    .finally(() => {
+                        // Reset loading state
+                        loginSubmitText.textContent = 'Login';
+                        loginLoadingSpinner.classList.add('hidden');
+                    });
+            });
+            
+            // Logout button (Admin View)
+            logoutBtn.addEventListener('click', function() {
+                auth.signOut().then(() => {
+                    // Hide dashboard, show login form
+                    adminDashboard.classList.add('hidden');
+                    loginFormContainer.classList.remove('hidden');
+                    
+                    // Reset admin selections
+                    adminClassSelect.value = '';
+                    adminSectionSelect.value = '';
+                    adminExamTypeSelect.value = '';
+                    studentListContainer.classList.add('hidden');
+                    marksEntryForm.classList.add('hidden');
+                    viewResultsSection.classList.add('hidden');
+                }).catch((error) => {
+                    alert('Logout failed. Please try again.');
                 });
             });
-        });
-    </script>
-    
-    <!-- HTML to Canvas library for download functionality -->
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    
-</body>
+            
+            // Load students button (Admin View)
+            loadStudentsBtn.addEventListener('click', function() {
+                const classId = adminClassSelect.value;
+                const section = adminSectionSelect.value;
+                const examType = adminExamTypeSelect.value;
+                
+                if (!classId || !section || !examType) {
+                    alert('Please select class, section, and exam type');
+                    return;
+                }
+                
+                currentAdminClass = classId;
+                currentAdminSection = section;
+                currentAdminExamType = examType;
+                
+                // Show loading state
+                loadStudentsBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Loading...';
+                
+                // Check if result is published for this class/section/exam
+                db.collection('published_results')
+                    .doc(`${examType}_${classId}_${section}`)
+                    .get()
+                    .then(doc => {
+                        publishToggle.checked = doc.exists;
+                        
+                        // Get students for this class/section
+                        return db.collection('students')
+                            .where('class', '==', classId)
+                            .where('section', '==', section)
+                            .orderBy('roll')
+                            .get();
+                    })
+                    .then(snapshot => {
+                        adminStudentTableBody.innerHTML = '';
+                        
+                        if (snapshot.empty) {
+                            adminStudentTableBody.innerHTML = `
+                                <tr>
+                                    <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">No students found for this class/section</td>
+                                </tr>
+                            `;
+                            return;
+                        }
+                        
+                        snapshot.forEach(doc => {
+                            const student = doc.data();
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td class
 </html>
