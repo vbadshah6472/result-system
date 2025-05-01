@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - School Result System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc;
+        }
+        
+        .school-logo {
+            width: 80px;
+            height: 80px;
+            background-color: #e0e7ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1d4ed8;
+            font-size: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .login-card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .login-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .watermark {
+            position: absolute;
+            opacity: 0.1;
+            font-size: 120px;
+            color: #1d4ed8;
+            transform: rotate(-30deg);
+            z-index: -1;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8 flex flex-col items-center justify-center min-h-screen">
+        <!-- School Header -->
+        <header class="text-center mb-8">
+            <div class="school-logo mx-auto mb-4">
+                <i class="fas fa-school"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Shree Tikuligadh Secondary School</h1>
+            <p class="text-gray-600">Tilottama-14, Tikuligadh, Rupandehi</p>
+            <p class="text-gray-500 text-sm">Established: 2018 B.S.</p>
+            <h2 class="text-2xl font-semibold text-blue-600 mt-6">Admin Portal</h2>
+        </header>
+        
+        <!-- Login Card -->
+        <div class="max-w-md w-full bg-white rounded-lg shadow-md overflow-hidden login-card relative">
+            <div class="watermark">SECURE</div>
+            <div class="bg-blue-600 px-6 py-4">
+                <h3 class="text-lg font-semibold text-white">Admin Login</h3>
+            </div>
+            
+            <form id="loginForm" class="p-6">
+                <!-- Email Field -->
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-envelope text-gray-400"></i>
+                        </div>
+                        <input type="email" id="email" name="email" required 
+                               class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                               placeholder="admin@school.edu.np">
+                    </div>
+                </div>
+                
+                <!-- Password Field -->
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" id="password" name="password" required 
+                               class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                               placeholder="••••••••">
+                    </div>
+                </div>
+                
+                <!-- Remember Me & Forgot Password -->
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center">
+                        <input id="remember-me" name="remember-me" type="checkbox" 
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <label for="remember-me" class="ml-2 block text-sm text-gray-700">
+                            Remember me
+                        </label>
+                    </div>
+                    <div class="text-sm">
+                        <a href="#" class="font-medium text-blue-600 hover:text-blue-500">
+                            Forgot password?
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Submit Button -->
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition duration-150 ease-in-out flex items-center justify-center">
+                    <span id="loginSubmitText">Login</span>
+                    <svg id="loginLoadingSpinner" class="hidden ml-2 h-5 w-5 text-white loading-spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </form>
+            
+            <!-- Error Message Container -->
+            <div id="errorContainer" class="hidden px-6 pb-4">
+                <div class="bg-red-50 border-l-4 border-red-400 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800" id="errorTitle">Error</h3>
+                            <div class="mt-2 text-sm text-red-700" id="errorMessage">
+                                <p>Invalid email or password. Please try again.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Back to Student Portal -->
+        <div class="mt-8 text-center">
+            <a href="index.html" class="text-blue-600 hover:text-blue-800 font-medium">
+                <i class="fas fa-arrow-left mr-1"></i> Back to Student Portal
+            </a>
+        </div>
+    </div>
+    
+    <!-- Firebase Configuration and JavaScript -->
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1WUbckRKgjxvxY6tTnXPMDNmnXuLAkuA",
+            authDomain: "online-results-system--tss.firebaseapp.com",
+            projectId: "online-results-system--tss",
+            storageBucket: "online-results-system--tss.appspot.com",
+            messagingSenderId: "910049232791",
+            appId: "1:910049232791:web:11eed578cd9593a5f566d2"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        
+        // DOM Elements
+        const loginForm = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginSubmitText = document.getElementById('loginSubmitText');
+        const loginLoadingSpinner = document.getElementById('loginLoadingSpinner');
+        const errorContainer = document.getElementById('errorContainer');
+        const errorTitle = document.getElementById('errorTitle');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // Login form submission
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            const rememberMe = document.getElementById('remember-me').checked;
+            
+            // Show loading state
+            loginSubmitText.textContent = 'Logging in...';
+            loginLoadingSpinner.classList.remove('hidden');
+            errorContainer.classList.add('hidden');
+            
+            // Set persistence based on "Remember me" selection
+            const persistence = rememberMe ? 
+                firebase.auth.Auth.Persistence.LOCAL : 
+                firebase.auth.Auth.Persistence.SESSION;
+            
+            auth.setPersistence(persistence)
+                .then(() => {
+                    // Sign in with email and password
+                    return auth.signInWithEmailAndPassword(email, password);
+                })
+                .then((userCredential) => {
+                    // Redirect to admin dashboard on successful login
+                    window.location.href = 'admin-dashboard.html';
+                })
+                .catch((error) => {
+                    // Handle errors
+                    let errorTitleText = 'Login Failed';
+                    let errorMessageText = 'An error occurred during login. Please try again.';
+                    
+                    switch (error.code) {
+                        case 'auth/wrong-password':
+                            errorTitleText = 'Incorrect Password';
+                            errorMessageText = 'The password you entered is incorrect. Please try again.';
+                            break;
+                        case 'auth/user-not-found':
+                            errorTitleText = 'Account Not Found';
+                            errorMessageText = 'No user found with this email address.';
+                            break;
+                        case 'auth/invalid-email':
+                            errorTitleText = 'Invalid Email';
+                            errorMessageText = 'The email address is not valid.';
+                            break;
+                        case 'auth/user-disabled':
+                            errorTitleText = 'Account Disabled';
+                            errorMessageText = 'This account has been disabled. Please contact support.';
+                            break;
+                        case 'auth/too-many-requests':
+                            errorTitleText = 'Too Many Attempts';
+                            errorMessageText = 'Access to this account has been temporarily disabled due to many failed login attempts. Please try again later.';
+                            break;
+                    }
+                    
+                    // Show error message
+                    errorTitle.textContent = errorTitleText;
+                    errorMessage.innerHTML = `<p>${errorMessageText}</p>`;
+                    errorContainer.classList.remove('hidden');
+                    
+                    // Reset loading state
+                    loginSubmitText.textContent = 'Login';
+                    loginLoadingSpinner.classList.add('hidden');
+                });
+        });
+        
+        // Check if user is already logged in
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Redirect to admin dashboard if already logged in
+                window.location.href = 'admin-dashboard.html';
+            }
+        });
+    </script>
+</body>
+</html>
